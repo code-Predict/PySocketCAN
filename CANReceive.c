@@ -6,6 +6,8 @@
 #include <string.h>
 #include <unistd.h>
 
+#include <errno.h>
+
 #include <net/if.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -15,18 +17,22 @@
 
 // CANソケットを開く (https://www.kernel.org/より引用)
 int openCANSocket(char *channel){
-    int sock = -1;
-
+    int sock;
     struct sockaddr_can addr;
     struct ifreq ifr;
-    sock = socket(PF_CAN, SOCK_RAW, CAN_RAW)
+
+    sock = socket(PF_CAN, SOCK_RAW, CAN_RAW);
 	if (sock < 0) {
 		perror("Socket error");
 		return -1;
 	}
 	strcpy(ifr.ifr_name, channel);
 	ioctl(sock, SIOCGIFINDEX, &ifr);
-    
+
+    // ノンブロッキング設定
+    int val = 1;
+    ioctl(sock, FIONBIO, &val);
+
 	memset(&addr, 0, sizeof(addr));
 	addr.can_family = AF_CAN;
 	addr.can_ifindex = ifr.ifr_ifindex;
@@ -36,7 +42,7 @@ int openCANSocket(char *channel){
         return -1;
 	}
 
-    return s;
+    return sock;
 }
 
 // CANソケットを閉じる
@@ -46,6 +52,7 @@ int closeCANSocket(int CANSocket){
 
 
 int main(int argc, char **argv){
+    errno = 0;
     // CANソケットを開く
     printf("Opening can socket...");
     int CANSocket = openCANSocket("vcan1");
@@ -60,16 +67,33 @@ int main(int argc, char **argv){
     int endReq = 0;
     unsigned long int received = 0;
 
+    // 受信タイムアウト時間設定
+    struct timeval tv;
+    tv.tv_sec = 3;
+    tv.tv_usec = 0;
+
+    int n = 0;
     while(!endReq){
+        // fdsに設定されたソケットが読み込み可能になるまで待ちます
+        n = select(0, &CANSocket, NULL, NULL, &tv);
+
+        // タイムアウトの場合にselectは0を返します
+        if (n == 0) {
+            // ループから抜けます
+            printf("timeout\n");
+            break;
+        }
+
         // フレームリード待機
         struct can_frame frame;
 
         // int nbytes = read(CANSocket, &frame, sizeof(struct can_frame));
         int nbytes = recv(CANSocket, &frame, sizeof(struct can_frame), 0);
-
+        printf("%d\n", nbytes);
+        
         // 受信データ量がcan_frameのサイズに合っていなければ、不正CANフレームとして処理
         if (nbytes < sizeof(struct can_frame)) {
-            print("error: %d", errno)
+            printf("error: %d\n", errno - EAGAIN);
             perror("incomplete CAN frame\n");
             return 1;
         }
