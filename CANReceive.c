@@ -46,6 +46,48 @@ int closeCANSocket(int CANSocket){
     return close(CANSocket);
 }
 
+// CANソケットからフレームを受信する
+int readFrame(int CANSocket, struct can_frame *frame, int timeout){
+    struct can_frame receive;
+
+    // fd初期化
+    fd_set readfds;
+    FD_ZERO(&readfds);
+    FD_SET(CANSocket, &readfds);
+
+    // 受信タイムアウト時間設定(tiemout>0で適用)
+    struct timeval tv, *timeoutVal;
+    tv.tv_sec = timeout;
+    tv.tv_usec = 0;
+
+    if (timeout > 0) {
+        timeoutVal = &tv;
+    }
+
+    // fdに設定されたソケットが読み込み可能になるまで待機
+    int n = select(CANSocket + 1, &readfds, NULL, NULL, timeoutVal);
+
+    if (n <= 0) {
+        printf("timeout.\n");
+        return 1;
+    }
+
+    if (FD_ISSET(CANSocket, &readfds)) {
+        // 受信バイト数を取得
+        int nbytes = recv(CANSocket, &receive, sizeof(struct can_frame), 0);
+        
+        // 受信データ量がcan_frameのサイズに合っていなければ、不正CANフレームとして処理
+        if (nbytes < sizeof(struct can_frame)) {
+            perror("incomplete CAN frame\n");
+            return 1;
+        }
+
+        // ポインタに値を渡す
+        *frame = receive;
+
+        return 0;
+    }
+}
 
 int main(int argc, char **argv){
     errno = 0;
@@ -71,13 +113,10 @@ int main(int argc, char **argv){
     while(!endReq){
         // スレッドブロックして受信
         struct can_frame frame;
-        int nbytes = read(CANSocket, &frame, sizeof(struct can_frame));
-        if (nbytes < 0) {
-            perror("Couldn't read CAN Frame");
-            return 1;
-        }else if (nbytes < sizeof(struct can_frame)){
-            perror("Invalid SocketCAN data");
-            return 1;
+        if (readFrame(&frame, CANSocket, 10) < 0){
+            printf("timeout...");
+            endReq = 1;
+            continue;
         }
 
         // フレームを整形して表示
