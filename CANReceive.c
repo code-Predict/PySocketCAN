@@ -26,7 +26,7 @@ int openCANSocket(char *channel){
 		perror("Socket error");
 		return -1;
 	}
-	strcpy(ifr.ifr_name, channel);
+	strcpy(ifr.ifr_name, "vcan1");
 	ioctl(sock, SIOCGIFINDEX, &ifr);
 
 	memset(&addr, 0, sizeof(addr));
@@ -57,19 +57,19 @@ int readFrame(int CANSocket, struct can_frame *frame, int timeout){
 
     // 受信タイムアウト時間設定(tiemout>0で適用)
     struct timeval tv, *timeoutVal;
-    tv.tv_sec = timeout;
-    tv.tv_usec = 0;
 
     if (timeout > 0) {
-        timeoutVal = &tv;
+        tv.tv_sec = timeout;
+        tv.tv_usec = 0;
     }
+    timeoutVal = &tv;
 
     // fdに設定されたソケットが読み込み可能になるまで待機
     int n = select(CANSocket + 1, &readfds, NULL, NULL, timeoutVal);
 
     if (n <= 0) {
-        printf("timeout.\n");
-        return 1;
+        perror("Socket timeout.\n");
+        return -1;
     }
 
     if (FD_ISSET(CANSocket, &readfds)) {
@@ -113,7 +113,7 @@ int main(int argc, char **argv){
     while(!endReq){
         // スレッドブロックして受信
         struct can_frame frame;
-        if (readFrame(&frame, CANSocket, 10) < 0){
+        if (readFrame(CANSocket, &frame, 10) != 0){
             printf("timeout...");
             endReq = 1;
             continue;
