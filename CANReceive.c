@@ -29,10 +29,6 @@ int openCANSocket(char *channel){
 	strcpy(ifr.ifr_name, channel);
 	ioctl(sock, SIOCGIFINDEX, &ifr);
 
-    // ノンブロッキング設定
-    int val = 1;
-    ioctl(sock, FIONBIO, &val);
-
 	memset(&addr, 0, sizeof(addr));
 	addr.can_family = AF_CAN;
 	addr.can_ifindex = ifr.ifr_ifindex;
@@ -62,7 +58,6 @@ int main(int argc, char **argv){
     }
     printf("finished.\n");
 
-
     // 受信ループ
     int endReq = 0;
     unsigned long int received = 0;
@@ -74,27 +69,14 @@ int main(int argc, char **argv){
 
     int n = 0;
     while(!endReq){
-        // fdsに設定されたソケットが読み込み可能になるまで待ちます
-        n = select(0, &CANSocket, NULL, NULL, &tv);
-
-        // タイムアウトの場合にselectは0を返します
-        if (n == 0) {
-            // ループから抜けます
-            printf("timeout\n");
-            break;
-        }
-
-        // フレームリード待機
+        // スレッドブロックして受信
         struct can_frame frame;
-
-        // int nbytes = read(CANSocket, &frame, sizeof(struct can_frame));
-        int nbytes = recv(CANSocket, &frame, sizeof(struct can_frame), 0);
-        printf("%d\n", nbytes);
-        
-        // 受信データ量がcan_frameのサイズに合っていなければ、不正CANフレームとして処理
-        if (nbytes < sizeof(struct can_frame)) {
-            printf("error: %d\n", errno - EAGAIN);
-            perror("incomplete CAN frame\n");
+        int nbytes = read(CANSocket, &frame, sizeof(struct can_frame));
+        if (nbytes < 0) {
+            perror("Couldn't read CAN Frame");
+            return 1;
+        }else if (nbytes < sizeof(struct can_frame)){
+            perror("Invalid SocketCAN data");
             return 1;
         }
 
