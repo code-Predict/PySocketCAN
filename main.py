@@ -2,23 +2,12 @@
 # pythonでもCANを高速受信したい!
 #
 import sys
-# from ctypes import CDLL, c_uint8, c_uint32, Structure, pointer
-from ctypes import *
+from ctypes import CDLL, c_uint8, c_uint32, Structure, byref
+# from ctypes import *
+from CANFrame import CANFrame
 
 def main():
     CANReceive = CDLL('./CANReceive.so')
-
-    # can_frame構造体
-    CANDATA = c_uint8 * 8
-    class CAN_Frame(Structure):
-        _fields_ = [
-            ("can_id", c_uint32),
-            ("can_dlc", c_uint8),
-            ("__pad", c_uint8),
-            ("__res0", c_uint8),
-            ("__res1", c_uint8),
-            ("data", CANDATA)
-        ]
 
     # ソケットを開ける
     socket = CANReceive.openCANSocket("vcan1")
@@ -30,20 +19,24 @@ def main():
     # 受信待ち
     timeout = 5
     endReq = False
-    frame = CAN_Frame(0, 0, 0, 0, 0, CANDATA(0))
+    frame = CANFrame()
     while not endReq:
         stat = CANReceive.readFrame(socket, byref(frame), timeout)
-        if stat < 0:
-            print("timeout...")
-            endReq = True
-            continue
-        elif stat > 0:
-            print("invalid can frame.")
+        if not (stat == 0):
+            print("timeout or receive error")
             endReq = True
             continue
 
-        print("Received!")
-        print(frame)
+        # コールバック呼び出し
+        onReceive(frame)
+
+# 受信コールバック
+def onReceive(frame):
+    print("{0} [{1}] {2}".format(
+        format(frame.can_id, '04X'),
+        frame.can_dlc,
+        ' '.join([format(frame.data[d], '02X') for d in range(frame.can_dlc)])
+    ))
 
 if __name__ == '__main__':
     try:
