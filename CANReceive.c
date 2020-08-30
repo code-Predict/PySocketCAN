@@ -61,8 +61,10 @@ int readFrame(int CANSocket, struct can_frame *frame, int timeout){
     if (timeout > 0) {
         tv.tv_sec = timeout;
         tv.tv_usec = 0;
+        timeoutVal = &tv;
+    }else{
+        timeoutVal = NULL;
     }
-    timeoutVal = &tv;
 
     // fdに設定されたソケットが読み込み可能になるまで待機
     int n = select(CANSocket + 1, &readfds, NULL, NULL, timeoutVal);

@@ -28,7 +28,7 @@ def main():
     print("socket opened. receive loop...")
     
     # 受信待ち
-    timeout = 0
+    timeout = 5
     endReq = False
     frame = CAN_Frame(0, 0, 0, 0, 0, CANDATA(0))
     while not endReq:
@@ -46,4 +46,8 @@ def main():
         print(frame)
 
 if __name__ == '__main__':
-    main()
+    try:
+        main()
+        print("main thread has started. type Ctrl+C to break.")
+    except KeyboardInterrupt:
+        print("break")
