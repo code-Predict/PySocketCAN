@@ -1,8 +1,7 @@
 #
 # CANフレーム
 #
-# from ctypes import c_uint32, c_uint8, Structure
-from ctypes import *
+from ctypes import c_uint32, c_uint8, Structure
 
 class CANFrame(Structure):
 
