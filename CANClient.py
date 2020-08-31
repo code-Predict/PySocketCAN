@@ -2,10 +2,8 @@
 # 高速CANクライアント
 #
 from threading import Thread
-from queue import Queue, Empty
-from ctypes import CDLL, c_uint8, c_uint32, byref
+from ctypes import CDLL, byref
 from CANFrame import CANFrame
-import sys
 try:
     import RPi.GPIO as GPIO
 except ImportError:
