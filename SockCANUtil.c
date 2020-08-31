@@ -1,5 +1,5 @@
 /*
- * CAN受信テスト 
+ * SocketCANユーティリティ
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -44,6 +44,15 @@ int openCANSocket(char *channel){
 // CANソケットを閉じる
 int closeCANSocket(int CANSocket){
     return close(CANSocket);
+}
+
+// ソケットにフレームを送信する
+int sendFrame(int CANSocket, struct can_frame *frame){
+    int n = write(CANSocket, frame, sizeof(struct can_frame));
+    if (n != sizeof(struct can_frame)) {
+        return 1;
+    }
+    return 0;
 }
 
 // CANソケットからフレームを受信する
@@ -101,6 +110,13 @@ int main(int argc, char **argv){
         return 1;
     }
     printf("finished.\n");
+
+    // ちょっとだけデータ投げる
+    struct can_frame frame;
+    frame.can_id = 0x114;
+    frame.can_dlc = 5;
+    sprintf(frame.data, "AAAAA");
+    sendFrame(CANSocket, &frame);
 
     // 受信ループ
     int endReq = 0;

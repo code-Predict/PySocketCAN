@@ -1,2 +1,2 @@
-CANReceive: CANReceive.c
-	gcc -shared -fPIC -o CANReceive.so CANReceive.c
+SockCANUtil: SockCANUtil.c
+	gcc -shared -fPIC -o SockCANUtil.so SockCANUtil.c
