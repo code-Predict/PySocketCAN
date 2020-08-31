@@ -12,7 +12,7 @@ except ImportError:
 class CANClient():
 
     def __init__(self, channel, intPin = 25, cname = "", callBack = None):
-        name = "SocketCANUtil.so"
+        name = "./SockCANUtil.so"
         if cname != "":
             name = cname
         self.SocketCAN = CDLL(name)

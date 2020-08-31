@@ -1,39 +1,13 @@
 #
 # pythonでもCANを高速受信したい!
 #
-import sys
-from ctypes import CDLL, c_uint8, c_uint32, Structure, byref
-# from ctypes import *
-from CANFrame import CANFrame
+from lib.CANClient import CANClient
 
 def main():
-    CANReceive = CDLL('./SockCANUtil.so')
+    client = CANClient("vcan1", callBack=onReceive)
 
-    # ソケットを開ける
-    socket = CANReceive.openCANSocket("vcan1")
-    if socket < 0:
-        print("socket open error!")
-        return
-    print("socket opened. receive loop...")
-
-    # 10フレーム流し込む
     for _ in range(10):
-        frame = CANFrame(0x114, range(8))
-        CANReceive.sendFrame(socket, byref(frame))
-    
-    # 受信待ち
-    timeout = 10
-    endReq = False
-    frame = CANFrame()
-    while not endReq:
-        stat = CANReceive.readFrame(socket, byref(frame), timeout)
-        if not (stat == 0):
-            print("timeout or receive error")
-            endReq = True
-            continue
-
-        # コールバック呼び出し
-        onReceive(frame)
+        client.sendFrame(0x114, range(8))
 
 # 受信コールバック
 def onReceive(frame):
@@ -47,5 +21,7 @@ if __name__ == '__main__':
     try:
         main()
         print("main thread has started. type Ctrl+C to break.")
+        while True:
+            pass
     except KeyboardInterrupt:
         print("break")
